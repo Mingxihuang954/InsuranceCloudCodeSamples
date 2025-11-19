@@ -1,0 +1,303 @@
+@(contextPath = "SalesTransaction.UserProfile", attributeSource = "ST")
+extern string UserProfile;
+
+type CommercialPropertyInsurance {
+    @(defaultValue = "ABCD1234")
+    string SIC_Code;
+
+    // @(defaultValue = "10000")
+    // For large range value, don’t set defaultValue(@defaultValue= xxx) in model, and use configurable=false IF the attribute isn't being set in a constraint
+    @(configurable=false)
+    int Agreed_Value = [0..1000000];
+
+    
+    string Cause_Of_Loss = ["Broad", "Special", "Basic"];
+
+    @(closeRelation=true, propagateUp=true, sequence = 1)
+    relation commerciallocationclass : CommercialLocationClass[0..10] {
+        locationCaStateCount = count(State == "CA");
+        locationTxStateCount = count(State == "TX");
+        commLocBuildAge6Count = count(Location.locBuildAge6Count > 0);
+        commLocBuildEquipGoodCount = count(Location.locBuildEquipGoodCountInt > 0);
+        locationMaxBuildingCovLimit = max(Location.commercialBuildingCovLimit);
+        locationMaxWarehouseCovLimit = max(Location.warehouseBuildingCovLimit);
+        locationSumBuildingEquipVal = sum(Location.buildingSumEquipValue);
+    }
+
+    /* Hide attribute rule */
+    rule(Agreed_Value > 10000, "hide", "attribute", "SIC_Code");  
+
+	//int wareHouseCoverageLimitOnRootLevel = commerciallocationclass.locationMaxWarehouseCovLimit;
+    string msg0922 = strformat("DEBUG: commLocBuildAge6Count is %d", commerciallocationclass.commLocBuildAge6Count);
+    string msg0924 = strformat("DEBUG: commLocBuildEquipGoodCount is %d", commerciallocationclass.commLocBuildEquipGoodCount);
+    message(true, msg0922);
+    message(true, msg0924);
+	
+
+    @(closeRelation=true, sequence = 2)
+    relation generalliabilitycoverage : GeneralLiabilityCoverage[0..1];
+	@(nullAssignable=true)
+    int childCommBuildCovLimit = (commerciallocationclass.locationMaxBuildingCovLimit !=null ) ? commerciallocationclass.locationMaxBuildingCovLimit : 0;
+    @(nullAssignable=true)
+    int childWarehouseBuildCovLimit = (commerciallocationclass.locationMaxWarehouseCovLimit != null) ? commerciallocationclass.locationMaxWarehouseCovLimit : 0;
+    @(nullAssignable=true)
+    int childLocBuildAge6Count = (commerciallocationclass.commLocBuildAge6Count != null) ? commerciallocationclass.commLocBuildAge6Count : 0;
+    @(nullAssignable=true)
+    int childLocBuildEquipGoodCount = (commerciallocationclass.commLocBuildEquipGoodCount !=null ) ? commerciallocationclass.commLocBuildEquipGoodCount : 0;
+    @(nullAssignable=true)
+    int childCommercialEquipmentValueSum = (commerciallocationclass.locationSumBuildingEquipVal != null ) ? commerciallocationclass.locationSumBuildingEquipVal : 0;
+
+    // boolean genLiabLimitRuleCondition = commerciallocationclass.locationTxStateCount == 0 && (childWarehouseBuildCovLimit < 20000 && childCommBuildCovLimit < 50000) && childCommercialEquipmentValueSum > 100000 && generalliabilitycoverage[GeneralLiabilityCoverage] > 0;
+
+    string msgg4 = strformat("ROOT LEVEL: locationTxStateCount is %d", commerciallocationclass.locationTxStateCount);
+    message(true, msgg4);
+    string msgg3 = strformat("ROOT LEVEL: childWarehouseBuildCovLimit is %d", childWarehouseBuildCovLimit);
+    @(nullAssignable=true)
+    int test = (commerciallocationclass.locationMaxWarehouseCovLimit != null) ? commerciallocationclass.locationMaxWarehouseCovLimit : 0;
+    message(1==1, "var =: {}", test);
+    message(true, msgg3);
+    string msgg2 = strformat("ROOT LEVEL: childCommBuildCovLimit is %d", childCommBuildCovLimit);
+    message(true, msgg2);
+    string msgg5 = strformat("ROOT LEVEL: childCommercialEquipmentValueSum is %d", childCommercialEquipmentValueSum);
+    message(true, msgg5);
+
+
+    /* Top-down rule: Set default product rule - currently enforces the rule, known gap in 256 */
+    preference((Cause_Of_Loss == "Basic" && commerciallocationclass.locationCaStateCount > 0) -> generalliabilitycoverage[GeneralLiabilityCoverage], "General Liability coverage is default selected when cause of loss is basic and domestic location state is CA");
+    /* Top-down rule: Auto-add general liability coverage if building age is 6 and equipment condition is good */
+    
+    require(childLocBuildAge6Count > 0 && childLocBuildEquipGoodCount > 0, generalliabilitycoverage[GeneralLiabilityCoverage] {General_Liability_Limit = 50000}, "General Liability coverage is required when Building age is 6 and Equipment condition is Good");
+    /* Top-down rule - general liability coverage should be 50k if all location not TX, max building cov < 50k, max warehouse cov < 20k, and equipment val min > 100k */
+    boolean glLimitCondition = commerciallocationclass.locationTxStateCount == 0 && (childWarehouseBuildCovLimit < 20000 && childCommBuildCovLimit < 50000) && childCommercialEquipmentValueSum > 100000 && generalliabilitycoverage[GeneralLiabilityCoverage] == 1;
+    
+    //int generalLiabilityLimit = (generalliabilitycoverage[GeneralLiabilityCoverage] > 0) ? generalliabilitycoverage[GeneralLiabilityCoverage].General_Liability_Limit : 0;
+    int generalLiabilityLimit = [1000, 2000, 5000, 10000, 25000, 50000];
+}
+
+type GeneralLiabilityCoverage {
+    @(domainComputation = "false", defaultValue = "100")
+    int General_Liability_Deductible = [0, 50, 100, 200, 500];
+
+    @(domainComputation = "false", defaultValue = "10000")
+    int General_Liability_Limit = [1000, 2000, 5000, 10000, 25000, 50000];
+}
+
+type CommercialLocationClass {
+    @(defaultValue = "San Francisco")
+    string City;
+
+    @(defaultValue = "California")
+    string State;
+
+    /* Set default attribute value rule */
+    preference(City == "SFO" -> State == "CA", "State should be CA if City is SFO");
+}
+
+type Location : CommercialLocationClass {
+    // int maxWarehouseCovLimit = 0;
+    @(closeRelation=true, propagateUp=true, sequence = 1)
+    relation commercialbuildingclass : CommercialBuildingClass[0..10] {
+        buildingAge6Count = count(Building_Age == 6);
+        locBuildEquipGoodCount = count(Building.buildEquipGoodConditionCount > 0);
+        maxBuildCovLimit = max(Building.commercialBurglaryCovLimit);
+        maxWarehouseCovLimit = max(Warehouse.warehouseBurglaryCovLimit);
+        sumBuildingEquipVal = sum(Building.buildingEquipValSum);
+    }
+
+    constraint(commercialbuildingclass.maxWarehouseCovLimit > 0 -> City == "Palo Alto", "if this location has ware house with coverage limit, default city to Palo Alto");
+
+    int genLimit = parent(generalLiabilityLimit);
+
+    string locationProdState = State;
+
+    @(nullAssignable=true)
+    int locBuildAge6Count = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.buildingAge6Count : 0;
+    @(nullAssignable=true)
+    int locBuildEquipGoodCountInt = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.locBuildEquipGoodCount : 0;
+    @(nullAssignable=true)
+    int commercialBuildingCovLimit = (commercialbuildingclass[Building] > 0) ? commercialbuildingclass.maxBuildCovLimit : 0;
+
+    // int warehouseBuildingCovLimit = 0; // setting hardcoded value avoids unbound message
+    // int buildCard = cardinality(Building);
+    // int wareCard = cardinality(Warehouse);
+    // string msggloc3 = strformat("buildCard is %d", buildCard);
+    // message(true, msggloc3);
+    // string msggloc4 = strformat("wareCard is %d", wareCard);
+    // message(true, msggloc4);
+    // int maxWare = (wareCard == 0) ? 0 : max(commercialbuildingclass[Warehouse].warehouseBurglaryCovLimit, 0);
+    // int maxWare = max(commercialbuildingclass[Warehouse].warehouseBurglaryCovLimit, 0);
+    @(nullAssignable=true)
+    int warehouseBuildingCovLimit = (commercialbuildingclass[Warehouse] > 0) ? commercialbuildingclass.maxWarehouseCovLimit : 0; // leads to unbound when warehouse instance is empty, needs to default to 0
+    // constraint(commercialbuildingclass[Warehouse] > 0 -> warehouseBuildingCovLimit == commercialbuildingclass.maxWarehouseCovLimit); // runs into timeout limit
+    @(nullAssignable=true)
+    int buildingSumEquipValue = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.sumBuildingEquipVal : 0;
+
+    string msggloc1 = strformat("LOCATION LEVEL: commercialBuildingCovLimit is %d", commercialBuildingCovLimit);
+    message(true, msggloc1);
+    string msggloc2 = strformat("LOCATION LEVEL: warehouseBuildingCovLimit is %d", warehouseBuildingCovLimit);
+    message(true, msggloc2);
+
+    /* Set attribute value rule */
+    constraint(City == "Boston" -> State == "MA", "State must be MA if City is set to Boston");
+}
+
+type CommercialBuildingClass {
+    @(defaultValue = "5")
+    int Building_Age = [0..100];
+
+    @(defaultValue = "Standalone")
+    string Alarm_Type = ["Standalone", "Connected"];
+
+    @(defaultValue = "Yes")
+    string Sprinklers = ["Yes", "No"];
+}
+
+type Building : CommercialBuildingClass {
+    @(closeRelation = true, propagateUp=true, sequence=2)
+    relation commercialequipmentclass : CommercialEquipmentClass[0..20] {
+        equipMakeLawnMowerCount = count(Equipment_Make == "Lawnmower");
+        equipMakeFridgeCount = count(Equipment_Make == "Refrigerator");
+        equipGoodConditionCount = count(Equipment_Condition == "Good");
+        equipValueSum = sum(Equipment_Value);
+    }
+
+	@(closeRelation=true, propagateUp=true, sequence=1)
+    relation burglarycoverage : BurglaryCoverage[1];
+
+	@(closeRelation=true,sequence=3)
+    relation vandalismcoverage : VandalismCoverage[0..1];
+
+    string parentLocationProdState = parent(locationProdState);
+    string parentLocationState = parent(State);
+    int genLiabilityLimit = parent(genLimit);
+
+    // string msgg1 = strformat("parentLocationProdState is %s", parentLocationProdState);
+    // message(true, msgg1);
+    // string msgg2 = strformat("parentLocationState is %s", parentLocationState);
+    // message(true, msgg2);
+
+    // REVISIT - CML EDITOR suddenly not liking burglarycoverage[BurglaryCoverage].Burglary_Limit notation
+    @(nullAssignable=true)
+    int commercialBurglaryCovLimit = (burglarycoverage[BurglaryCoverage] > 0) ? burglarycoverage.Burglary_Limit : 0;
+    // REVISIT - CML EDITOR suddenly not liking commercialequipmentclass[Equipment].equipValueSum notation, is accepting either commercialequipmentclass[CommercialEquipmentClass].equipValueSum or commercialequipmentclass.equipValueSum
+    @(nullAssignable=true)
+	int buildingEquipValSum = (commercialequipmentclass[Equipment] > 0) ? commercialequipmentclass.equipValueSum : 0;
+    
+    // int buildingEquipValSum = (commercialequipmentclass.equipValueSum != null) ? commercialequipmentclass.equipValueSum : 0;
+
+    // int buildingEquipValSum = (commercialequipmentclass[Equipment] > 0) ? commercialequipmentclass.equipValueSum : 0;
+    
+    @(nullAssignable=true)
+    int buildEquipGoodConditionCount = (commercialequipmentclass[Equipment] > 0) ? commercialequipmentclass.equipGoodConditionCount : 0;
+
+    // int buildEquipValueMinInt = commercialequipmentclass.equipValueMin;
+    boolean equipmentGoodBuildingAgeCondition = buildEquipGoodConditionCount > 0 && Building_Age == 6;
+    rule(equipmentGoodBuildingAgeCondition == true, "hide", "attribute", "Sprinklers");
+    message(equipmentGoodBuildingAgeCondition == true, "Hide sprinklers when equipment condition is good and building age is 6");
+
+    constraint((UserProfile == "Standard User" && parentLocationProdState != "FL" && commercialequipmentclass.equipMakeLawnMowerCount > 0) -> Sprinklers == "No", "Building should have no sprinkler if Standard User, Location State is not FL, and an Equipment is Lawnmower");
+
+    constraint((UserProfile == "Custom Partner Community User" && parentLocationState != "CA" && commercialequipmentclass.equipMakeFridgeCount > 0) -> Sprinklers == "Yes", "Building should have sprinklers if Partner Community User, Location State is not CA, and Equipment Class Make is Refrigerator");
+}
+
+type Warehouse : CommercialBuildingClass {
+    @(closeRelation = true, propagateUp=true, sequence=1)
+    relation warehousecommercialequipmentclass : CommercialEquipmentClass[0..20];
+
+    @(closeRelation=true, propagateUp=true,sequence = 2)
+    relation warehouseburglarycoverage : BurglaryCoverage[1];
+
+    @(closeRelation=true,sequence = 3)
+    relation warehousevandalismcoverage : VandalismCoverage[0..1];
+
+    // REVISIT - CML EDITOR suddenly not liking warehouseburglarycoverage[BurglaryCoverage].Burglary_Limit NOTATION
+    int warehouseBurglaryCovLimit = warehouseburglarycoverage.Burglary_Limit;
+}
+
+type CommercialEquipmentClass {
+    @(defaultValue = "Good", sequence=1)
+    string Equipment_Condition = ["Good", "Very Good", "New"];
+
+    @(defaultValue = "5")
+    int Equipment_Age = [0..100];
+
+    @(defaultValue = "TOFIO")
+    string Equipment_Make;
+
+    @(defaultValue = "Heating and Air Conditioners")
+    string Equipment_Type = ["CNC Machines", "Heating and Air Conditioners", "Manufacturing Equipments", "Refrigerators", "Electrical Systems", "Boilers and Pressure Equipments", "Elevators", "Motors and Engines"];
+
+    @(configurable=false)
+    int Equipment_Value = [0..500000];
+}
+
+type BurglaryCoverage {
+    @(domainComputation = "false", defaultValue = "10000")
+    int Burglary_Limit = [1000, 2000, 5000, 10000, 25000, 50000];
+
+    //, sequence=3
+    @(domainComputation = "false", defaultValue = "100")
+    int Burglary_Deductible = [0, 50, 100, 200, 500];
+}
+
+type VandalismCoverage;
+
+type Equipment : CommercialEquipmentClass {
+
+    string parentLocationStateEquip = parent(State);
+    int rootCovLimit = parent(generalLiabilityLimit);
+    int parentCommBuildCovLimit = parent(commercialBurglaryCovLimit);
+    int rootGenLiability= parent(genLiabilityLimit);
+    int parentBuildingAge = parent(Building_Age);
+
+    @(sequence = 3)
+    relation equipmentcoverage : EquipmentCoverage[0..1];
+
+    // string msgg4 = strformat("parentLocationStateEquip is %s", parentLocationStateEquip);
+    // message(true, msgg4);
+    // string msgg3 = strformat("rootCovLimit is %d", rootCovLimit);
+    // message(true, msgg3);
+    // string msgg2 = strformat("parentCommBuildCovLimit is %d", parentCommBuildCovLimit);
+    // message(true, msgg2);
+    // string msgg5 = strformat("parentBuildingAge is %d", parentBuildingAge);
+    // message(true, msgg5);
+
+    /* Rule: Add Equipment Coverage and set Limit to 50000 if root coverage limit is less than 2,000,000, parent location State is not NY, parent building Burglary coverage limit is less than 50,000, and equipment value is greater than 100,000 */
+    // boolean ruleCondition = parentLocationStateEquip != "NY" && parentCommBuildCovLimit < 50000 && Equipment_Value > 100000 && rootCovLimit < 2000000;
+    //boolean ruleCondition = parentLocationStateEquip != "NY" &&  Equipment_Value > 100000 ;
+
+    /* Remove equipment coverage if equipment condition is good, user is CC user and parent building age is 6 */
+	// add back later: && UserProfile == "Custom Community Plus User"
+
+    // conditionGood + ageis6 -> exclude equipment coverage
+	// if quipVal > 100000 + root coverage limit < 2000000 -> add equipment coverage
+    // conditionGood + ageis6 -> require root coverage, limit = 50000
+    
+    rule(Equipment_Condition == "Good" && parentBuildingAge == 6, "hide", "attribute", "Equipment_Condition", "value", "New");
+	
+    /* Bottom-up rule: Hide Equipment condition option New if Equipment condition is Good and parent building age is 6 */
+
+    require(parentLocationStateEquip != "NY" && parentCommBuildCovLimit < 50000 && Equipment_Value > 100000 && rootCovLimit < 2000000
+, equipmentcoverage[EquipmentCoverage]{Equipment_Limit = 50000}, "Add EquipmentCoverage when location is not NY, commercial building cov limit is lt 50000, equipment value > 100,000");
+
+    //constraint(ruleCondition == true -> equipmentcoverage[EquipmentCoverage].Equipment_Limit == 50000, "Set equipment cov limit to 50,000");
+    //message(ruleCondition == true, "Equipment coverage is added");
+    //message(ruleCondition == true && equipmentcoverage[EquipmentCoverage] > 0, "Equipment coverage is set to 50000");
+
+    message(true, "EQUIPMENT LEVEL: UserProfile is %s", UserProfile);
+    message(true, "EQUIPMENT LEVEL: parentLocationStateEquip is %s", parentLocationStateEquip);
+    message(true, "EQUIPMENT LEVEL: Equipment_Condition is %s", Equipment_Condition);
+    message(true, "EQUIPMENT LEVEL: parentBuildingAge is %s", parentBuildingAge);
+
+    exclude(UserProfile == "System Administrator" && parentLocationStateEquip == "NY" && Equipment_Condition == "Good"  && parentBuildingAge == 6, equipmentcoverage[EquipmentCoverage], "Please remove the Equipment Coverage due to Equipment Condition = Good and Building Age = 6 when profile is community user");
+    message(Equipment_Condition == "Good"  && parentBuildingAge == 6, "Removed Equipment Coverage due to Equipment Condition = Good and Building Age = 6 when profile is community user");
+}
+
+type EquipmentCoverage {
+    @(domainComputation = "false", defaultValue = "10000")
+    int Equipment_Limit = [1000, 2000, 5000, 10000, 25000, 50000];
+
+    //, sequence=6
+    @(domainComputation = "false", defaultValue = "100")
+    int Equipment_Deductible = [0, 50, 100, 200, 500];
+}
