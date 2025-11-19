@@ -1,7 +1,5 @@
 /*
- * =====================================================
- * DO NOT MODIFY
- * =====================================================
+ * =================================
  * Gold Standard CML Constraint Model for Medical Product
  * =====================================================
  */
@@ -11,7 +9,6 @@ extern string UserProfile;
 type FamilyHealthInsurance {
     relation primarymember : PrimaryMember[1];
 }
-
 
 type Member {
     @(configurable=false)
@@ -30,47 +27,37 @@ type Member {
     @(configurable = false, domainComputation = false)
     string Marital_Status = ["Unmarried", "Married", "Single", "None"];
 
-    @(configurable=false, defaultValue = "Male",domainComputation = false)
+    @(configurable=false, defaultValue = "Others",domainComputation = false)
     string Gender = ["Male", "Female", "Others"];
 }
 
-
 type PrimaryMember : Member {
-
-    message(Last_Name == "" || Last_Name == null, "Contact/Patient Record is required!", "Error");
     
-    @(closeRelation=true, propagateUp=true, sequence=1)
+    @(closeRelation=true, propagateUp=true)
     relation dependentmember : Member {
         dependentMemberMaxAge = max(Age);
         dependentMemberMarriedMaritalStatusCount = count(Marital_Status == 'Married');
         dependentMemberSingleMaritalStatusCount = count(Marital_Status == 'Single');
     }
-    @(sequence=1)
     relation preventivecarewellness : PreventiveCareWellness[0..1];
     
-    @(sequence=1)
     relation outpatient : OutPatient[0..1];
     
-    @(sequence=2)
     relation criticalillnesssurgery : CriticalIllnessSurgery[0..1];
     
-    @(sequence=2)
     relation chronicdisease : ChronicDisease[0..1];
 
-
+    int primarymemberPCWOut_Network_Deductible_Limit = preventivecarewellness[PreventiveCareWellness].Out_Network_Deductible_Limit;
     // constraint #1
     boolean isClause1 = (Age >= 40 && Gender == "Male") || (Marital_Status == "Married");
-     
-    require(isClause1 &&  outpatient[OutPatient] > 0, preventivecarewellness[PreventiveCareWellness]{Deductible_Limit = 5000}, 
-    	"If primary member is 40 years old plus male or married, and has out patient coverage, auto Add PreventiveCareWelness");
-    message(isClause1 &&  outpatient[OutPatient] > 0, 
-    	"If primary member is 40 years old plus male or married, and has out patient coverage, auto Add PreventiveCareWelness");
-    
-    require(isClause1 &&  outpatient[OutPatient] > 0, chronicdisease[ChronicDisease], "If primary member is 40 years old plus male or married, and has out patient coverage, auto Add Chronic Disease Coverage");
-    message(isClause1 &&  outpatient[OutPatient] > 0, "If primary member is 40 years old plus male or married, and has out patient coverage, auto Add Chronic Disease Coverage");
-    
-    int primarymemberPCWOut_Network_Deductible_Limit = preventivecarewellness[PreventiveCareWellness].Out_Network_Deductible_Limit;
 
+    require((Age >= 40 && Gender == "Male") || (Marital_Status == "Married") &&  outpatient[OutPatient] > 0, preventivecarewellness[PreventiveCareWellness], 
+    	"If primary member is 40 years old plus male or married, and has out patient coverage, must have PreventiveCare & Welness");  
+
+    constraint((Age >= 40 && Gender == "Male") || (Marital_Status == "Married") &&  outpatient[OutPatient] > 0 && preventivecarewellness[PreventiveCareWellness] > 0 -> preventivecarewellness[PreventiveCareWellness].Deductible_Limit == 5000);
+
+    require((Age >= 40 && Gender == "Male") || (Marital_Status == "Married") &&  outpatient[OutPatient] > 0, chronicdisease[ChronicDisease], "If primary member is 40 years old plus male or married, and has out patient coverage, msut have Chronic Disease Coverage");
+ 
     // constraint #2
     boolean isClause2 = (Gender == 'Female') && (UserProfile == "System Administrator") && (dependentmember.dependentMemberSingleMaritalStatusCount > 0);
     exclude((Gender == 'Female') && (UserProfile == "System Administrator") && (dependentmember.dependentMemberSingleMaritalStatusCount > 0), criticalillnesssurgery[CriticalIllnessSurgery],"remove and disable primary member's Critical Illness Surgery'coverage");
@@ -83,9 +70,7 @@ type PrimaryMember : Member {
     require(Age > 40 && dependentmember.dependentMemberMaxAge < 30, chronicdisease[ChronicDisease], "Auto Add ChronicDisease for Primary member");
 }
 
-
 type DependentMember : Member {
-    message(Last_Name == "" || Last_Name == null, "Contact/Patient Record is required!", "Error");
     
     relation dependentoutpatient : OutPatient[0..1];
 
@@ -109,29 +94,29 @@ type DependentMember : Member {
     boolean primaryMemberHasOutPatient = parent(primaryMemberHasOutPatient);
 
     // constraint #3
-    require((Age < 30 && primmemberONDL >= 250), dependentpreventivecarewellness[PreventiveCareWellness] {Annual_Out_of_Pocket_Limit = 20000},"Preventive Care Is Required OOPM is set to 20k");
+    require((Age < 30 && primmemberONDL >= 250), dependentpreventivecarewellness[PreventiveCareWellness],"Preventive Care Is Required OOPM is set to 20k");
+    constraint((Age < 30 && primmemberONDL >= 250) && dependentpreventivecarewellness[PreventiveCareWellness] > 0 -> dependentpreventivecarewellness[PreventiveCareWellness].Annual_Out_of_Pocket_Limit == 20000);
     
     // Rule5
     require(primaryMemberAge > 40 && Age < 30, dependentoutpatient[OutPatient], "Autoadd out patient cov for depmember");
-    message(primaryMemberAge > 40 && Age < 30, "Autoadd outpatient cov for depmember");
     
     // Rule4
     require(primaryMemberHasOutPatient && UserProfile == "System Administrator", dependentchronicdisease[ChronicDisease], "Autoadd chronic disease cov for dependent member");
-    message(primaryMemberHasOutPatient && UserProfile == "System Administrator", "Autoadd chronic disease cov for dependent member");
 }
 
-
-@(split = false)
 type CriticalIllnessSurgery {
     @(configurable=false)
     int Out_Network_Diagnostic_lab_test_copay;
+    
     @(defaultValue="50", domainComputation=false)
     int Out_Network_Deductible_Limit = [0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
     @(defaultValue = "3000")
     int Out_Network_Limit;
+    
     @(defaultValue = "0")
     int Out_Network_coinsurance;
+    
     @(domainComputation=false)
     int Out_Network_Annual_Out_of_Pocket_Limit = [0, 100, 500, 1000];
 
@@ -155,24 +140,29 @@ type CriticalIllnessSurgery {
     int Number_of_days_covered = [0, 30, 60];
 }
 
-@(split = false)
 type ChronicDisease {
     @(configurable=false)
     int Out_Network_Diagnostic_lab_test_copay;
+    
     @(defaultValue = "50", domainComputation = false)
     int Out_Network_Deductible_Limit = [0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
     @(defaultValue = "3000")
     int Out_Network_Limit;
+    
     @(defaultValue = "0")
     int Out_Network_coinsurance;
+    
     @(domainComputation = false)
     int Out_Network_Annual_Out_of_Pocket_Limit = [0, 100, 500, 1000];
 
     string Out_Network_Room_Rent_limit;
+    
     string Out_Network_ICU_Fees;
+    
     @(defaultValue = "30")
     int Out_Network_Number_of_days_covered;
+    
     @(domainComputation = false)
     int Out_Network_Doctor_visit_copay = [0, 10, 50, 100];
 
@@ -188,10 +178,13 @@ type ChronicDisease {
 
     @(configurable=false)
     int Diagnostic_lab_test_copay;
+    
     @(defaultValue = "0")
     int coinsurance;
+    
     @(defaultValue = "5000")
     int Medical_Limit;
+    
     @(domainComputation = false)
     int Doctor_visit_copay = [0, 10, 25, 10000];
 
@@ -199,28 +192,35 @@ type ChronicDisease {
     int Number_of_days_covered = [0, 30, 60];
 }
 
-@(split = false)
 type PreventiveCareWellness {
     @(configurable=false)
     int Out_Network_Diagnostic_lab_test_copay;
+    
     @(defaultValue = "50", domainComputation = false)
     int Out_Network_Deductible_Limit = [0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
     @(defaultValue = "3000")
     int Out_Network_Limit;
+    
     @(defaultValue = "0")
     int Out_Network_coinsurance;
+    
     @(domainComputation = false)
     int Out_Network_Annual_Out_of_Pocket_Limit = [0, 100, 500, 1000];
 
     string Out_Network_Room_Rent_limit;
+    
     string Out_Network_ICU_Fees;
+    
     @(defaultValue = "30", domainComputation = false)
     int Out_Network_Number_of_days_covered;
+    
     @(domainComputation = false)
     int Out_Network_Doctor_visit_copay = [0, 10, 50, 100];
+    
     @(configurable=false)
     int Out_Network_Copay;
+    
     @(defaultValue = "5", domainComputation = false)
     int Deductible_Limit = [0, 5, 100, 200,5000];
 
@@ -239,6 +239,7 @@ type PreventiveCareWellness {
     
     @(defaultValue = "5000")
     int Medical_Limit;
+    
     @(domainComputation = false)
     int Doctor_visit_copay = [0, 10, 25, 10000];
 
@@ -246,28 +247,35 @@ type PreventiveCareWellness {
     int Number_of_days_covered = [0, 10, 30, 60];
 }
 
-@(split = false)
 type OutPatient {
     @(configurable=false)
     int Out_Network_Diagnostic_lab_test_copay;
+    
     @(defaultValue = "50")
     int Out_Network_Deductible_Limit = [0, 25, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500];
 
     @(defaultValue = "3000")
     int Out_Network_Limit;
+    
     @(defaultValue = "0")
     int Out_Network_coinsurance;
+    
     @(domainComputation = false)
     int Out_Network_Annual_Out_of_Pocket_Limit = [0, 100, 500, 1000];
 
     string Out_Network_Room_Rent_limit;
+    
     string Out_Network_ICU_Fees;
+    
     @(defaultValue = "30")
     int Out_Network_Number_of_days_covered;
+    
     @(domainComputation = false)
     int Out_Network_Doctor_visit_copay = [0, 10, 50, 100];
+    
     @(configurable=false)
     int Out_Network_Copay;
+    
     @(defaultValue = "50", domainComputation = false)
     int Deductible_Limit = [0, 5, 50, 100, 200,5000];
 
@@ -280,10 +288,13 @@ type OutPatient {
 
     @(configurable = false)
     int Diagnostic_lab_test_copay;
+    
     @(defaultValue = "0")
     int coinsurance;
+    
     @(defaultValue = "5000")
     int Medical_Limit;
+    
     @(domainComputation = false)
     int Doctor_visit_copay = [0, 10, 25, 10000];
 
