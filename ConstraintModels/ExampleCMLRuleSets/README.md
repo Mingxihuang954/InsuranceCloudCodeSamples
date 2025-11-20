@@ -2,16 +2,6 @@
 
 ### AutoSilver
 
-Base Constraint
-Multi-instance constraint
-Require coverage constraint
-Exclude coverage constraint
-Cardinality constraint
-Parent cardinality constraint
-Cross Product constraint
-Grandchild products constraint
-Siblings products constraint
-
 #### Constraint 1
  In the bundle, if the most expensive car over $50,000 and the oldest car is before 2020, the bundle must have a Medical Payment Coverage with $2000 limit
 
