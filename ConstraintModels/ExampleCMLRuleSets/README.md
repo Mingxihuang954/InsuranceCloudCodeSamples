@@ -1,122 +1,37 @@
-## Constraints (in English) and Code Samples (in CML)
+## Constraints and Use Cases in English
 
-### AutoSilver
+This section describes in plain English the business rules that are implemented in the CML (Constraint Modeling Language) code files. These constraints correspond to the rule sets found in the accompanying CML files (AutoSilverFinal.cml, MedicalFinal.cml, and CommercialFinal.cml).
 
-#### Constraint 1
- In the bundle, if the most expensive car over $50,000 and the oldest car is before 2020, the bundle must have a Medical Payment Coverage with $2000 limit
+### Auto Silver Sample Constraints
 
+For the Auto Silver rule examples, assume the following constraints:
 
-#### Constraint 2
- Car is newer than 2023 must have Collision Coverage with $5000 limit
-
-
-#### Constraint 3
- Car is older than 2020 and Collision Coverage is selected with $200 deductible must NOT have Uninsured Motorist Coverage
-
-
-#### Constraint 4
- Driver Age and First Licensed Age must be greater than 16
+1. For the Auto Silver bundle, if the most expensive vehicle is worth over $50,000 and the oldest vehicle's model year is before 2020, the bundle must have a Medical Payment coverage with $2000 limit.
+2. For a Vehicle bundle, vehicles newer than 2023 must have Collision coverage with $5000 limit.
+3. For a Vehicle bundle, vehicles older than 2020 with Collision coverage selected with $200 deductible, the vehicle bundle must NOT have Uninsured Motorist coverage.
+4. For a driver, Driver Age and First Licensed Age must be greater than 16.
+5. For the Auto Silver bundle, if at least one vehicle doesn't have Anti-Theft, at least one driver has accident points greater than 5, and item price for product is over $100: Must have Bodily Injury & Property Damage Coverag; Property damage per Accident Limit of BIPD must be hidden; $2000 of Bodily Injury Per Accident Limit of BIPD must be hidden.
+6. For the Auto Silver bundle, if the quote has medical payments covered with a limit of $1000, and the current user is a standard user, the quote must have BIPD with a bodily injury per person limit of $1000
 
 
-#### Constraint 5
- If at least one car doesn't have Anti-Theft, at least one driver has accident point greater than 5, and item price for product is over $100:
-- Must have BIPD coverage (bodily injury & property damage)
-- **Attribute:** Property damage per Accident Limit of BIPD must be hidden
-- **Value:** $2000 of Bodily Injury Per Accident Limit of BIPD must be hidden
+### Family Health Insurance Comprehensive (Medical) Sample Constraints
+
+For the Family Health Insurance Comprehensive rule examples, assume the following constraints:
+
+1. For a primary member, if the primary member has Out-Patient coverage, and the primary member is a male over 40 years old or is married, the policy must have Preventive Care and Wellness coverage with Deductible Limit of $5000, and must have Chronic Disease coverage.
+2. For a primary member, if the current user is a system administrator, and the primary member is female with at least one single dependent member: exclude Critical Illness Surgery for primary member and hide attribute Out Network Copay for primary member's Out-Patient coverage; For a dependent member, hide attribute value Others for Gender and add Critical Illness Surgery coverage.
+3. For a dependent member, if a dependent member is younger than 30, and the primary member's Preventive Care and Wellness has Out Network Deductible Limit is greater than or equal to $250, the dependent member must have Preventive Care and Wellness with Annual out of pocket limit of $20,000.
+4. If the primary member has Out-Patient coverage and the current user profile is a system administrator, the dependent member must have Chronic Disease coverage, and the primary member's Out-Patient coverage must have Doctor visit copay of $10,000.
+5. For a primary member, if the primary member's age is greater than 40 and the oldest dependent member's age is less than 30, the primary member must have Chronic Disease coverage; For a dependent member, if its primary member's age is greater than 40 and its age is less than 30 must have Out Patient coverage.
 
 
-#### Constraint 6
- Medical Payment covered with limit $1000, standard user
-- Must have BIPD with Bodily Injury Per Person Limit $1000
+### Commercial Property Insurance( Commercial) Sample Constraints
 
+For the Commercial Property Insurance rule examples, assume the following constraints:
 
-### Family Health Insurance Comprehensive (Medical)
-
-#### Constraint 1
- Primary Member has Outpatient Coverage, and Primary Member is a male over 40 Y/O or is married
-- must have PCW (preventive care and wellness) with Dedeuctible Limit = 5000
-- must have Chronic Disease Coverage
-
-
-#### Constraint 2
- Dependent Member is selected and current user is a system admin; Primary member is female, and has at least one single dependent member
-- exclude Critical Illness Surgery for Primary Member
-- hide attribute Out Network Copay for Primary member's out patient coverage
-- hide attribute value Others for Gender for Dependent Member
-- add Critical Illness Surgery for Dependent Member
-
-
-#### Constraint 3
- Dependent Member is younger than 30, primary member's PCW have >= 250 Out_Network_Deductible_Limit
-- must have PCW for dependent member with Annual outofpocket limit = 20000
-
-
-#### Constraint 4
- Primary Member has OutPatient Coverage and is current user profile is a system admin, 
- - Dependent Member must have Chronic Disease Coverage, 
- - Primary Member's Out Patient Coverage must have Doctor visit copay = 10000
-
-
-
-#### Constraint 5
- Primarymember.Age > 40 and dependentMember.Age < 30
- - Primary Member MUST have Chronic Disease Coverage
- - Dependent Member MUST have Out Patient Coverage
-
-
-### Commercial
-
-#### Constraint 1 
-IF 
-- Commercial General Liability Coverage is selected 
-- all Location States are not equal to TX (Texas)
-- all Commercial Building Burglary Coverage Limit is less than $50,000
-- all Warehouse Building Burglary Coverage is less than $20,000
-- sum of Equipment Value of Commercial Building is greater than $100,000
-
-THEN
-- set Commercial General Liability Coverage Limit to $50,000
-
-
-#### Constraint 2
-IF
-- Commercial General Liability Coverage Limit is less than $2,000,000
-- Location State is not equal to NY (New York)
-- Building Burglary Coverage Limit is less than $50,000
-- General Equipment Value is greater than $100,000 
-
-Then 
-- *add* General Equipment Coverage to General Equipment bundle 
-- *set* General Equipment coverage Limit to $50,000
-
-
-#### Constraint 3
-IF 
-- Equipment is selected and Equipment is in 'Good' Condition
-- UserProfile is Admin User
-- Building is selected and Building Age is 6
-- Location State is NY (added to be mutual exclusive to constraint 2)
-
-THEN
-- Exclude EquipmentCoverage; 
-
-
-#### Constraint 4 
-For Location:
-- City is Boston -> State needs to be MA
-- City is San Francisco -> State needs to be CA
-
-
-#### Constraint 5
-- If Agreed Value of Commercial Property Root > 10000, hide SIC code attribute
-
-
-#### Constraint 6
-IF
-- Equipment is selected and at least 1 Equipment.EquipmentCondition = Good
-- Building(PC) is selected and BuildingAge = 6
-
-THEN
-- Hide CommercialBuilding.Sprinkers Information message : Hide sprinklers
-- Hide AttributeValue ‘New’ for Equipment.EquipmentCondition 
-- *Add General Liability coverage at root level*  if at least one building age is 6 and at least 1 equipment condition is good
+1. For a Commercial Property Insurance bundle, If Commercial General Liability coverage is selected, and no location States is TX (Texas), and the aggregated total Commercial Building Burglary coverage Limits are less than $50,000, and the aggregated total Warehouse Building Burglary coverage is less than $20,000, and the sum of Equipment Value of that Commercial Building is greater than $100,000, then set Commercial General Liability coverage Limit to $50,000.
+2. For an Equipment bundle, if Commercial General Liability coverage Limit is less than $2,000,000, and location State is not NY (New York), and Building Burglary coverage Limit is less than $50,000, and General Equipment Value is greater than $100,000, then add General Equipment coverage to General Equipment bundle and set General Equipment coverage Limit to $50,000.
+3. For an Equipment bundle, if Equipment is in 'Good' Condition, and UserProfile is system administrator, and building Age is 6, and location State is NY, then exclude Equipment coverage of the Equipment.
+4. For a location bundle, if City is Boston, State needs to be MA; if City is San Francisco, State needs to be CA.
+5. For a Commercial Property Insurance bundle, if Agreed Value of Commercial Property Insurance is greater than $10,000, hide SIC code attribute.
+6. For a Commercial Property Insurance bundle, if at least one equipment's Condition is Good, and at least one building Age is 6, add General Liability coverage. For Building bundle, if at least one equipment's Condition is Good and its Age is 6, hide its attribute Sprinklers; For a Equipment bundle, hide Attribute Value 'New' for Equipment Condition.
