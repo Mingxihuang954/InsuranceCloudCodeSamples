@@ -81,6 +81,7 @@ type Location : CommercialLocationClass {
     int locBuildEquipGoodCountInt = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.locBuildEquipGoodCount : 0;
     int commercialBuildingCovLimit = (commercialbuildingclass[Building] > 0) ? commercialbuildingclass.maxBuildCovLimit : 0;
     int warehouseBuildingCovLimit = (commercialbuildingclass[Warehouse] > 0) ? commercialbuildingclass.maxWarehouseCovLimit : 0;
+	int buildingSumEquipValue = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.sumBuildingEquipVal : 0;
 
     /* Set attribute value rule */
     constraint(City == "Boston" -> State == "MA", "State must be MA if City is set to Boston");
@@ -107,7 +108,7 @@ type Building : CommercialBuildingClass {
         equipValueSum = sum(Equipment_Value);
     }
 
-	@(closeRelation=truee)
+	@(closeRelation=true)
     relation burglarycoverage : BurglaryCoverage[0..1];
 
 	@(closeRelation=true)
