@@ -1,4 +1,6 @@
-<!-- For these hierarchies it would be nice to have a paragraph at the beginning of the README that says how these can be used. I assume it's not possible to cut and paste or import these into an org. Are these provided just to show what they look like? Is the user expected to recreate them manually? Are there JSON versions of these that can be imported somehow? -->
+## Product Model Hierarchies
+
+The following product hierarchies are provided to help you visualize and quickly understand the product structures that the constraint models are built upon. These diagrams illustrate the relationships between root products, child products, coverages, and classifications, making it easier to comprehend how the CML rules apply across different levels of the insurance product hierarchy. Use these as reference when working with the corresponding constraint model examples.
 
 ### Auto Silver
 

@@ -14,7 +14,7 @@ Before using these tools:
   - Constraint Rule Engine enabled in target orgs (for CML migrations)
   - Appropriate API access and authentication credentials
 
-<!-- Here, you could put a little info like what needs to be ready in the org before using the tools. For example, relevant Context Definition and PCM data. -->
+Before using the CML Migration Tool, make sure the target org already has relevant Context Definition and PCM data such as Attributes, Product Classifications, Products, and Product Related Components.
 
 ---
 
@@ -25,11 +25,10 @@ Before using these tools:
 The **CML Migration Tool** enables seamless import, export, and deployment of Constraint Modeling Language (CML) rule sets across Salesforce orgs:
 
 - Moving rule sets from sandbox to production environments
-- Updating of the existing rule sets
+- Updating the existing rule sets
 - Creating backups of your CML configurations
 - Sharing rule set templates across multiple orgs
 
-Before using the CML Migration Tool, make sure the target org already has relevant Context Definition and PCM data such as Attributes, Product Classifications, Products, and Product Related Components.
 
 #### How to Use the CML Migration Tool
 
@@ -83,7 +82,7 @@ The **Multi Cloud Data Migrator** is a comprehensive tool for migrating Insuranc
 
 #### SObject Keys Reference
 
-For Step 7, it's critical to ensure your data is clean and properly prepared.
+For a successful migration, it's critical to ensure your data is clean and properly prepared.
 
 - Check Your Keys: Use the **View Plan** button to review the migration strategy.
 - Ensure Uniqueness: Verify that all Key fields and composite key combinations are populated and unique in the source data.
