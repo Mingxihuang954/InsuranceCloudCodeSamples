@@ -11,7 +11,7 @@ type CommercialPropertyInsurance {
     string Cause_Of_Loss = ["Broad", "Special", "Basic"];
 
     @(closeRelation=true, propagateUp=true)
-    relation commerciallocationclass : CommercialLocationClass[0..10] {
+    relation commerciallocationclass : CommercialLocationClass[0..2] {
         locationCaStateCount = count(State == "CA");
         locationTxStateCount = count(State == "TX");
         @(defaultValue = 0)
@@ -22,24 +22,27 @@ type CommercialPropertyInsurance {
         locationMaxBuildingCovLimit = max(Location.commercialBuildingCovLimit);
         @(defaultValue = 0)
         locationMaxWarehouseCovLimit = max(Location.warehouseBuildingCovLimit);
+        @(defaultValue = 0)
         locationSumBuildingEquipVal = sum(Location.buildingSumEquipValue);
     }
 
     rule(Agreed_Value > 10000, "hide", "attribute", "SIC_Code");  
 
-    @(closeRelation=true)
     relation generalliabilitycoverage : GeneralLiabilityCoverage[0..1];
-
     int childCommBuildCovLimit = commerciallocationclass.locationMaxBuildingCovLimit;
     int childWarehouseBuildCovLimit = commerciallocationclass.locationMaxWarehouseCovLimit;
     int childLocBuildAge6Count = commerciallocationclass.commLocBuildAge6Count;
     int childLocBuildEquipGoodCount = commerciallocationclass.commLocBuildEquipGoodCount;
     int childCommercialEquipmentValueSum = commerciallocationclass.locationSumBuildingEquipVal;
-
-    require(childLocBuildAge6Count > 0 && childLocBuildEquipGoodCount > 0, generalliabilitycoverage[GeneralLiabilityCoverage] {General_Liability_Limit = 50000}, "General Liability coverage is required when Building age is 6 and Equipment condition is Good");
-    boolean glLimitCondition = commerciallocationclass.locationTxStateCount == 0 && (childWarehouseBuildCovLimit < 20000 && childCommBuildCovLimit < 50000) && childCommercialEquipmentValueSum > 100000 && generalliabilitycoverage[GeneralLiabilityCoverage] == 1;
+	
     
-    int generalLiabilityLimit = [1000, 2000, 5000, 10000, 25000, 50000];
+    
+    require(childLocBuildAge6Count > 0 && childLocBuildEquipGoodCount > 0, generalliabilitycoverage[GeneralLiabilityCoverage], "General Liability coverage is required when Building age is 6 and Equipment condition is Good");
+    int generalLiabilityLimit = generalliabilitycoverage[GeneralLiabilityCoverage].General_Liability_Limit;
+    
+    require(commerciallocationclass.locationMaxWarehouseCovLimit == 50000 && commerciallocationclass.locationMaxBuildingCovLimit == 50000, generalliabilitycoverage[GeneralLiabilityCoverage] {General_Liability_Limit = 50000});
+
+    
 }
 
 type GeneralLiabilityCoverage {
@@ -60,7 +63,7 @@ type CommercialLocationClass {
 
 type Location : CommercialLocationClass {
     @(closeRelation=true, propagateUp=true)
-    relation commercialbuildingclass : CommercialBuildingClass[0..10] {
+    relation commercialbuildingclass : CommercialBuildingClass[0..2] {
         @(defaultValue = 0)
         buildingAge6Count = count(Building_Age == 6);
         @(defaultValue = 0)
@@ -77,13 +80,12 @@ type Location : CommercialLocationClass {
 
     string locationProdState = State;
 
-    int locBuildAge6Count = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.buildingAge6Count : 0;
-    int locBuildEquipGoodCountInt = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.locBuildEquipGoodCount : 0;
-    int commercialBuildingCovLimit = (commercialbuildingclass[Building] > 0) ? commercialbuildingclass.maxBuildCovLimit : 0;
-    int warehouseBuildingCovLimit = (commercialbuildingclass[Warehouse] > 0) ? commercialbuildingclass.maxWarehouseCovLimit : 0;
-	int buildingSumEquipValue = (commercialbuildingclass[CommercialBuildingClass] > 0) ? commercialbuildingclass.sumBuildingEquipVal : 0;
+    int locBuildAge6Count = commercialbuildingclass.buildingAge6Count;
+    int locBuildEquipGoodCountInt = commercialbuildingclass.locBuildEquipGoodCount;
+    int commercialBuildingCovLimit = commercialbuildingclass.maxBuildCovLimit;
+    int warehouseBuildingCovLimit = commercialbuildingclass.maxWarehouseCovLimit;
+	int buildingSumEquipValue =commercialbuildingclass.sumBuildingEquipVal;
 
-    /* Set attribute value rule */
     constraint(City == "Boston" -> State == "MA", "State must be MA if City is set to Boston");
     constraint(City == "San Francisco" -> State == "CA", "State must be CA if City is set to San Francisco");
 }
@@ -101,26 +103,24 @@ type CommercialBuildingClass {
 
 type Building : CommercialBuildingClass {
     @(closeRelation = true, propagateUp=true)
-    relation commercialequipmentclass : CommercialEquipmentClass[0..20] {
+    relation commercialequipmentclass : CommercialEquipmentClass[0..2] {
         equipMakeLawnMowerCount = count(Equipment_Make == "Lawnmower");
         equipMakeFridgeCount = count(Equipment_Make == "Refrigerator");
         equipGoodConditionCount = count(Equipment_Condition == "Good");
         equipValueSum = sum(Equipment_Value);
     }
 
-	@(closeRelation=true)
+	@(closeRelation=true, propagateUp=true)
     relation burglarycoverage : BurglaryCoverage[0..1];
 
-	@(closeRelation=true)
+	@(closeRelation=true, propagateUp=true)
     relation vandalismcoverage : VandalismCoverage[0..1];
-
-    string parentLocationProdState = parent(locationProdState);
     string parentLocationState = parent(State);
     int genLiabilityLimit = parent(genLimit);
     
-    int commercialBurglaryCovLimit = (burglarycoverage[BurglaryCoverage] > 0) ? burglarycoverage.Burglary_Limit : 0;
-	int buildingEquipValSum = (commercialequipmentclass[Equipment] > 0) ? commercialequipmentclass.equipValueSum : 0;
-    int buildEquipGoodConditionCount = (commercialequipmentclass[Equipment] > 0) ? commercialequipmentclass.equipGoodConditionCount : 0;
+    int commercialBurglaryCovLimit = burglarycoverage.Burglary_Limit;
+	int buildingEquipValSum = commercialequipmentclass.equipValueSum;
+    int buildEquipGoodConditionCount = commercialequipmentclass.equipGoodConditionCount;
 
     boolean equipmentGoodBuildingAgeCondition = buildEquipGoodConditionCount > 0 && Building_Age == 6;
     rule(buildEquipGoodConditionCount > 0 && Building_Age == 6, "hide", "attribute", "Sprinklers");
@@ -128,19 +128,19 @@ type Building : CommercialBuildingClass {
 
 type Warehouse : CommercialBuildingClass {
     @(closeRelation = true, propagateUp=true)
-    relation warehousecommercialequipmentclass : CommercialEquipmentClass[0..20];
+    relation warehousecommercialequipmentclass : CommercialEquipmentClass[0..2];
 
     @(closeRelation=true, propagateUp=true)
     relation warehouseburglarycoverage : BurglaryCoverage[0..1];
 
-    @(closeRelation=true,sequence = 3)
+    @(closeRelation=true)
     relation warehousevandalismcoverage : VandalismCoverage[0..1];
 
     int warehouseBurglaryCovLimit = warehouseburglarycoverage.Burglary_Limit;
 }
 
 type CommercialEquipmentClass {
-    @(defaultValue = "Good", sequence=1)
+    @(defaultValue = "Good")
     string Equipment_Condition = ["Good", "Very Good", "New"];
 
     @(defaultValue = "5")
