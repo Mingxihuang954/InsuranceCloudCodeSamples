@@ -11,7 +11,7 @@ type CommercialPropertyInsurance {
     string Cause_Of_Loss = ["Broad", "Special", "Basic"];
 
     @(closeRelation=true, propagateUp=true)
-    relation commerciallocationclass : CommercialLocationClass[0..2] {
+    relation commerciallocationclass : CommercialLocationClass[0..10] {
         locationCaStateCount = count(State == "CA");
         locationTxStateCount = count(State == "TX");
         @(defaultValue = 0)
@@ -63,7 +63,7 @@ type CommercialLocationClass {
 
 type Location : CommercialLocationClass {
     @(closeRelation=true, propagateUp=true)
-    relation commercialbuildingclass : CommercialBuildingClass[0..2] {
+    relation commercialbuildingclass : CommercialBuildingClass[0..10] {
         @(defaultValue = 0)
         buildingAge6Count = count(Building_Age == 6);
         @(defaultValue = 0)
@@ -103,7 +103,7 @@ type CommercialBuildingClass {
 
 type Building : CommercialBuildingClass {
     @(closeRelation = true, propagateUp=true)
-    relation commercialequipmentclass : CommercialEquipmentClass[0..2] {
+    relation commercialequipmentclass : CommercialEquipmentClass[0..20] {
         equipMakeLawnMowerCount = count(Equipment_Make == "Lawnmower");
         equipMakeFridgeCount = count(Equipment_Make == "Refrigerator");
         equipGoodConditionCount = count(Equipment_Condition == "Good");
@@ -128,7 +128,7 @@ type Building : CommercialBuildingClass {
 
 type Warehouse : CommercialBuildingClass {
     @(closeRelation = true, propagateUp=true)
-    relation warehousecommercialequipmentclass : CommercialEquipmentClass[0..2];
+    relation warehousecommercialequipmentclass : CommercialEquipmentClass[0..20];
 
     @(closeRelation=true, propagateUp=true)
     relation warehouseburglarycoverage : BurglaryCoverage[0..1];
